@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import socket from '../socket';
 import Header from '../components/Header';
 import QuestionCard from '../components/QuestionCard';
@@ -138,6 +139,24 @@ export default function HostPanel() {
               >
                 匯出 CSV
               </button>
+            </div>
+          </div>
+
+          {/* QR Code */}
+          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100">
+            <div className="bg-white p-2 rounded-lg border border-gray-100">
+              <QRCodeSVG
+                value={`${window.location.origin}/room/${code}`}
+                size={120}
+                fgColor="#313131"
+                level="M"
+              />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-gray-mid mb-1">掃描 QR Code 加入提問</p>
+              <p className="text-xs font-mono text-bronze break-all">
+                {window.location.origin}/room/{code}
+              </p>
             </div>
           </div>
 
