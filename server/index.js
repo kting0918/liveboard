@@ -28,14 +28,15 @@ app.use('/api', roomRoutes);
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
-  app.get('*', (req, res) => {
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
   });
 }
 
 setupSocket(io);
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || (process.env.NODE_ENV === 'production' ? 8080 : 3001);
 
 async function start() {
   try {
