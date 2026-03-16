@@ -65,6 +65,7 @@ export default function Room() {
 
   const sortedQuestions = [...questions].sort((a, b) => {
     if (a.isPinned !== b.isPinned) return b.isPinned ? 1 : -1;
+    if (a.isAnswered !== b.isAnswered) return a.isAnswered ? 1 : -1;
     return b.votes - a.votes;
   });
 
