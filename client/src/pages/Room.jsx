@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import socket from '../socket';
 import Header from '../components/Header';
 import QuestionCard from '../components/QuestionCard';
+import ConnectionStatus from '../components/ConnectionStatus';
 
 function getVisitorId() {
   let id = localStorage.getItem('liveboard-visitor-id');
@@ -12,6 +13,8 @@ function getVisitorId() {
   }
   return id;
 }
+
+const MAX_LENGTH = 500;
 
 export default function Room() {
   const { code } = useParams();
@@ -26,7 +29,6 @@ export default function Room() {
   const visitorId = useRef(getVisitorId());
 
   useEffect(() => {
-    // Fetch room info and questions
     fetch(`/api/rooms/${code}`)
       .then((r) => r.json())
       .then(setRoom)
@@ -37,7 +39,6 @@ export default function Room() {
       .then(setQuestions)
       .catch(() => {});
 
-    // Connect socket
     socket.connect();
     socket.emit('join-room', code);
 
@@ -55,13 +56,26 @@ export default function Room() {
       setQuestions((prev) => prev.filter((q) => q.id !== id));
     });
 
+    socket.on('room-closed', () => {
+      setRoom((prev) => prev ? { ...prev, isActive: false } : prev);
+    });
+
     return () => {
       socket.off('new-question');
       socket.off('question-updated');
       socket.off('question-deleted');
+      socket.off('room-closed');
       socket.disconnect();
     };
   }, [code]);
+
+  // Dynamic page title
+  useEffect(() => {
+    if (room?.name) {
+      document.title = `${room.name} | LiveBoard`;
+    }
+    return () => { document.title = 'LiveBoard — 即時問答互動平台'; };
+  }, [room?.name]);
 
   const sortedQuestions = [...questions].sort((a, b) => {
     if (a.isPinned !== b.isPinned) return b.isPinned ? 1 : -1;
@@ -97,39 +111,54 @@ export default function Room() {
     );
   }
 
+  const isActive = room?.isActive !== false;
+  const remaining = MAX_LENGTH - content.length;
+
   return (
     <div className="min-h-screen bg-bg-alt flex flex-col">
+      <ConnectionStatus />
       <Header roomName={room?.name} code={code} />
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-6">
         {/* Question form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="輸入你的問題..."
-            rows={3}
-            maxLength={500}
-            className="w-full resize-none border-0 focus:outline-none text-ink placeholder-gray-400 text-base"
-          />
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-            <input
-              type="text"
-              value={authorName}
-              onChange={(e) => setAuthorName(e.target.value)}
-              placeholder="你的暱稱（選填）"
-              maxLength={50}
-              className="px-3 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:border-bronze w-40"
+        {isActive ? (
+          <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="輸入你的問題..."
+              rows={3}
+              maxLength={MAX_LENGTH}
+              className="w-full resize-none border-0 focus:outline-none text-ink placeholder-gray-400 text-base"
             />
-            <button
-              type="submit"
-              disabled={!content.trim() || submitting}
-              className="px-5 py-2 bg-bronze text-white rounded-lg text-sm font-medium hover:bg-bronze-dark disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
-            >
-              送出提問
-            </button>
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  placeholder="你的暱稱（選填）"
+                  maxLength={50}
+                  className="px-3 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:border-bronze w-28 sm:w-40"
+                />
+                <span className={`text-xs ${remaining < 50 ? 'text-red-400' : 'text-gray-400'}`}>
+                  {remaining}
+                </span>
+              </div>
+              <button
+                type="submit"
+                disabled={!content.trim() || submitting}
+                className="px-5 py-2 bg-bronze text-white rounded-lg text-sm font-medium hover:bg-bronze-dark disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
+              >
+                送出提問
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-6 text-center text-gray-mid">
+            此活動已結束，無法再提問
           </div>
-        </form>
+        )}
 
         {/* Questions list */}
         <div className="mb-4 flex items-center justify-between">

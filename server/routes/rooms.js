@@ -32,7 +32,7 @@ router.post('/rooms', async (req, res) => {
 router.get('/rooms/:code', async (req, res) => {
   try {
     const room = await Room.findOne({
-      where: { code: req.params.code.toUpperCase(), isActive: true },
+      where: { code: req.params.code.toUpperCase() },
     });
     if (!room) return res.status(404).json({ error: '找不到房間' });
     res.json({

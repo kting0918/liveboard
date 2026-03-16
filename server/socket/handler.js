@@ -88,5 +88,19 @@ export function setupSocket(io) {
         socket.emit('error', '操作失敗');
       }
     });
+
+    // Host: close room
+    socket.on('close-room', async ({ code, hostToken }) => {
+      try {
+        const room = await Room.findOne({ where: { code: code.toUpperCase() } });
+        if (!room || room.hostToken !== hostToken) return;
+
+        room.isActive = false;
+        await room.save();
+        io.to(code).emit('room-closed');
+      } catch (err) {
+        socket.emit('error', '操作失敗');
+      }
+    });
   });
 }
